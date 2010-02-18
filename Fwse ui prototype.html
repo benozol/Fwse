@@ -2,7 +2,7 @@
         <head>
                 <title>Fwse Prototype</title>
                 <script type="text/javascript" src="jquery-1.4.1.js"></script>
-                        <link type="text/css" href="css/ui-darkness/jquery-ui-1.7.2.custom.css" rel="stylesheet" />
+                        <link type="text/css" href="css/ui-lightness/jquery-ui-1.7.2.custom.css" rel="stylesheet" />
                         <!--script type="text/javascript" src="js/jquery-1.3.2.min.js"></script-->
                         <!--script type="text/javascript" src="http://jquery-ui.googlecode.com/svn/tags/1.8rc1/jquery-1.4.1.js"></script-->
                         <script type="text/javascript" src="js/jquery-ui-1.7.2.custom.min.js"></script>
@@ -38,7 +38,7 @@
                                         padding-left:3px;
                                         padding-right:3px;
                                 }
-                                li {
+                                #tree li {
                                         background-color: white;
                                         list-style-type: none;
                                         font-style: normal;
@@ -80,35 +80,72 @@
                                 }
                         </style>
                 <script language="javascript">
-                        /*
-                        // Id and interface for file reference
-                        var fileContractId = "@mozilla.org/file/local;1";
-                        var fileInterface = Components.interfaces.nsILocalFile;
 
-                        // Id and interface for input stream
-                        var inputContractId = "@mozilla.org/network/file-input-stream;1";
-                        var inputInterface = Components.interfaces.nsIFileInputStream;
+                        var parameters;
+                        $(function() {
+                            var x = $('li').first();
+                            x.attr('id', 'selected');
+                            adjustSectioning($('ul#tree li'));
+                            $('#editDialog').dialog({ 
+                                    'modal': true,
+                                    'autoOpen': false,
+                                    'close': function() {
+                                        editing = false;
+                                    },
+                                    'open': function() {
+                                        $(this).children('textarea').focus();
+                                    },
+                                    'height': '50%',
+                                    'width': '50%'
+                            });
+                            parameters = [];
+                            var hashes = window.location.href.slice(window.location.href.indexOf('?') + 1).split('&');
+                            for(var i = 0; i < hashes.length; i++)
+                            {
+                                var hash = hashes[i].split('=');
+                                parameters.push(hash[0]);
+                                parameters[hash[0]] = hash[1];
+                            }
+                            if( !parameters['filename'] )
+                                alert("Reload page with a filename as get parameter (...html?filename=/hom...)");
+                        });
 
-                        // Id and interface for scriptable input stream
-                        var sinputContractId = "@mozilla.org/scriptableinputstream;1";
-                        var sinputInterface = Components.interfaces.nsIScriptableInputStream;
+                        function writeToFile(data) {
+                            var filename = parameters['filename'];
+                            log("Write to " + filename);
+                            try {
+                                netscape.security.PrivilegeManager.enablePrivilege("UniversalXPConnect");
+                            } catch (e) {
+                                alert("Permission to save file was denied.");
+                                return;
+                            }
+                            var file = Components.classes["@mozilla.org/file/local;1"]
+                                .createInstance(Components.interfaces.nsILocalFile);
+                            file.initWithPath(filename);
 
-                        // Request proper security privileges
-                        netscape.security.PrivilegeManager.enablePrivilege("UniversalXPConnect");
-                        var localFileClass = Components.classes[fileContractId];
-                        var file = localFileClass.createInstance(fileInterface);
-                        file.initWithPath('/tmp/testafile');
-                        document.write("The file "+file.leafName+" has "+file.fileSize+" bytes of data.");
-                        document.write("Does file exists? "+file.exists());
-                        document.write("Is file writable?"+file.isWritable());
-                        document.write("Is file readable?"+file.isReadable());
-                        document.write("Is file directory?"+file.isDirectory());
-                        document.write("Is file file?"+file.isFile());
-                        */
+                            // file is nsIFile, data is a string
+                            var foStream = Components.classes["@mozilla.org/network/file-output-stream;1"]
+                                .createInstance(Components.interfaces.nsIFileOutputStream);
+
+                            // use 0x02 | 0x10 to open file for appending.
+                            foStream.init(file, 0x02 | 0x08 | 0x20, 0666, 0); 
+                            // write, create, truncate
+                            // In a c file operation, we have no need to set file mode with or operation,
+                            // directly using "r" or "w" usually.
+
+                            // if you are sure there will never ever be any non-ascii text in data you can 
+                            // also call foStream.writeData directly
+                            var converter = Components.classes["@mozilla.org/intl/converter-output-stream;1"]
+                                .createInstance(Components.interfaces.nsIConverterOutputStream);
+                            converter.init(foStream, "UTF-8", 0, 0);
+                            converter.writeString(data);
+                            converter.close(); // this closes foStream
+                            log("Done");
+                        }
 
                         function log(msg) {
-                                $('div#output').prepend($('<br>'));
-                                $('div#output').prepend(msg);
+                                $('div#output div').prepend($('<br>'));
+                                $('div#output div').prepend(msg);
                         }
 
                         var editing = false;
@@ -175,48 +212,36 @@
                                        var body = li.children('div.body').first();
                                        var dlg = $('#editDialog');
                                        var textarea = $('#editDialog textarea');
-                                       var heading =  $('#editDialog h4');
                                        textarea.val(body.text());
-                                       heading.text(subject.text());
                                        editing = true;
-                                       dlg.dialog('option', 'buttons', {
-                                           "Ok": function() {
-                                               body.text(textarea.val());
-                                               dlg.dialog('close');
-                                           },
-                                           "Cancel": function() {
-                                               dlg.dialog('close');
-                                           }
-                                       });
+                                       dlg.dialog('option', {
+                                           'title': subject.text(),
+                                           'buttons':  {
+                                               "Ok": function() {
+                                                   body.text(textarea.val());
+                                                   dlg.dialog('close');
+                                               },
+                                               "Cancel": function() {
+                                                   dlg.dialog('close');
+                                               }
+                                       }});
                                        dlg.dialog('open');
                                        return false;
                                     case 88:
                                         $('div#output').toggleClass('hidden');
                                         return false;
                                     case 80:
-                                        alert(generateOutput($('ul#tree')));
+                                        var str = "";
+                                        str += "\\documentclass{srcartcl}\n";
+                                        str += "\\begin{document}\n";
+                                        str += generateOutput($('ul#tree'));
+                                        str += "\\end{document}\n";
+                                        writeToFile(str);
                                         return false;
                                     default:
                                         log(event.keyCode);
                                         return true;
                                 }
-                        });
-                        $(function() {
-                            var x = $('li').first();
-                            x.attr('id', 'selected');
-                            adjustSectioning($('ul#tree li'));
-                            $('#editDialog').dialog({ 
-                                    'modal': true,
-                                    'autoOpen': false,
-                                    'close': function() {
-                                        editing = false;
-                                    },
-                                    'open': function() {
-                                        $(this).children('textarea').focus();
-                                    },
-                                    'height': '50%',
-                                    'width': '50%'
-                            });
                         });
                         var sectionsByDepth = [ 'section', 'subsection', 'subsubsection' ];
                         var sectionClasses = 'section subsection subsubsection';
@@ -283,7 +308,16 @@
                         </ul></li>
                         <li><span class='subject headline'>Third sectioni</span><div class='body'></div></li>
                 </ul>
-                <div id="output" class="hidden"></div>
-                <div id="editDialog" title="Dialog Title"><h4></h4><textarea cols="82"></textarea></div>
+                <div id="output" class="hidden">
+                        TODO
+                        <ul>
+                                <li>Hide items</li>
+                                <li>Select multiple</li>
+                                <li>Move items</li>
+                                <li>Delete items</li>
+                        </ul>
+                        <div></div>
+                </div>
+                <div id="editDialog" title="Dialog Title"><textarea cols="82"></textarea></div>
         </body>
 </html>
