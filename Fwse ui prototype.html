@@ -1,0 +1,266 @@
+<html>
+        <head>
+                <title>test</title>
+                <script type="text/javascript" src="jquery-1.4.1.js"></script>
+                        <link type="text/css" href="css/ui-darkness/jquery-ui-1.7.2.custom.css" rel="stylesheet" />
+                        <!--script type="text/javascript" src="js/jquery-1.3.2.min.js"></script-->
+                        <!--script type="text/javascript" src="http://jquery-ui.googlecode.com/svn/tags/1.8rc1/jquery-1.4.1.js"></script-->
+                        <script type="text/javascript" src="js/jquery-ui-1.7.2.custom.min.js"></script>
+
+
+                        <style type="text/css">
+                                #tree input {
+                                        color: black;
+                                        background-color: #ddddff;
+                                        border: none;
+                                        font-style: none;
+                                        font-size: none;
+                                }
+                                li {
+                                        background-color: white;
+                                        list-style-type: none;
+                                        font-style: normal;
+                                        font-size: small;
+                                }
+                                #selected > span.subject {
+                                        // font-weight: bold;
+                                        background-color: #ffffaa;
+                                }
+                                ul {
+                                        background-color: white;
+                                        font-weight: normal;
+                                }
+                                div#output {
+                                        font-size: x-small;
+                                }
+                                div#output.hidden {
+                                        display: none;
+                                }
+                                .headline > span.subject, .headline > input {
+                                        font-style: italic !important;
+                                }
+                                .section > span.subject, .section > input {
+                                        font-size: x-large;
+                                }
+                                .subsection > span.subject, .subsection > input {
+                                        font-size: large;
+                                }
+                                .subsubsection > span.subject, .subsubsection > input {
+                                        font-size: medium;
+                                }
+                                div.body {
+                                        display: none;
+                                }
+                                #editDialog textarea {
+                                        width: 100%;
+                                        height: 100%;
+                                }
+                        </style>
+                <script language="javascript">
+                        // Id and interface for file reference
+                        var fileContractId = "@mozilla.org/file/local;1";
+                        var fileInterface = Components.interfaces.nsILocalFile;
+
+                        // Id and interface for input stream
+                        var inputContractId = "@mozilla.org/network/file-input-stream;1";
+                        var inputInterface = Components.interfaces.nsIFileInputStream;
+
+                        // Id and interface for scriptable input stream
+                        var sinputContractId = "@mozilla.org/scriptableinputstream;1";
+                        var sinputInterface = Components.interfaces.nsIScriptableInputStream;
+
+                        // Request proper security privileges
+                        netscape.security.PrivilegeManager.enablePrivilege("UniversalXPConnect");
+                        var localFileClass = Components.classes[fileContractId];
+                        var file = localFileClass.createInstance(fileInterface);
+                        file.initWithPath('/tmp/testafile');
+                        /*
+                        document.write("The file "+file.leafName+" has "+file.fileSize+" bytes of data.");
+                        document.write("Does file exists? "+file.exists());
+                        document.write("Is file writable?"+file.isWritable());
+                        document.write("Is file readable?"+file.isReadable());
+                        document.write("Is file directory?"+file.isDirectory());
+                        document.write("Is file file?"+file.isFile());
+                        */
+
+                        function log(msg) {
+                                $('div#output').prepend($('<br>'));
+                                $('div#output').prepend(msg);
+                        }
+
+                        var editing = false;
+
+                        $(window).keydown(function(event) {
+                                var li = $('li#selected');
+                                if( !editing ) switch (event.keyCode ) {
+                                    case 78:
+                                        var la = li.next();
+                                        if( la.length == 1 ) {
+                                            li.removeAttr('id');
+                                            la.attr('id', 'selected')
+                                        }
+                                        return false;
+                                    case 82:
+                                        var la = li.prev();
+                                        if( la.length == 1 ) {
+                                            li.removeAttr('id');
+                                            la.attr('id', 'selected')
+                                        }
+                                        return false;
+                                    case 84:
+                                        var la = li.children().children().first();
+                                        if( la.length > 0 ) {
+                                            li.removeAttr('id');
+                                            la.first().attr('id', 'selected');
+                                        }
+                                        return false;
+                                    case 83:
+                                        la = li.parents().first();
+                                        if( la.attr('id') != 'tree' ) {
+                                            li.removeAttr('id');
+                                            la.parents().first().attr('id', 'selected');
+                                        }
+                                        return false;
+                                    case 69:
+                                        editing = true;
+                                        var input = $('<input>').attr('name', 'subject').attr('type', 'text');
+                                        var subject = li.children('span.subject').first().replaceWith(input);
+                                        input.focus();
+                                        input.val(subject.text());
+                                        input.keydown(function(event) {
+                                            switch( event.keyCode ) {
+                                                case 27:
+                                                    input.replaceWith(subject);
+                                                    editing = false;
+                                                    return false;
+                                                case 13:
+                                                    subject.text($(this).val());
+                                                    $(this).replaceWith(subject);
+                                                    editing = false;
+                                                    return false;
+                                                default:
+                                                    return true;
+                                            }
+                                        });
+                                        return false;
+                                    case 72:
+                                       li.toggleClass('headline'); 
+                                       adjustSectioning(li);
+                                       return false;
+                                    case 65:
+                                       var subject = li.children('span.subject').first();
+                                       var body = li.children('div.body').first();
+                                       var dlg = $('#editDialog');
+                                       var textarea = $('#editDialog textarea');
+                                       var heading =  $('#editDialog h4');
+                                       textarea.val(body.text());
+                                       heading.text(subject.text());
+                                       editing = true;
+                                       dlg.dialog('option', 'buttons', {
+                                           "Ok": function() {
+                                               body.text(textarea.val());
+                                               dlg.dialog('close');
+                                           },
+                                           "Cancel": function() {
+                                               dlg.dialog('close');
+                                           }
+                                       });
+                                       dlg.dialog('open');
+                                       return false;
+                                    case 88:
+                                        $('div#output').toggleClass('hidden');
+                                        return false;
+                                    case 80:
+                                        alert(generateOutput($('ul#tree')));
+                                        return false;
+                                    default:
+                                        log(event.keyCode);
+                                        return true;
+                                }
+                        });
+                        $(function() {
+                            var x = $('li').first();
+                            x.attr('id', 'selected');
+                            adjustSectioning($('ul#tree li'));
+                            $('#editDialog').dialog({ 
+                                    'modal': true,
+                                    'autoOpen': false,
+                                    'close': function() {
+                                        editing = false;
+                                    },
+                                    'open': function() {
+                                        $(this).children('textarea').focus();
+                                    },
+                                    'height': '80%',
+                                    'width': '82em'
+                            });
+                        });
+                        var sectionsByDepth = [ 'section', 'subsection', 'subsubsection' ];
+                        var sectionClasses = 'section subsection subsubsection';
+                        function getHeadlineDepth(li) {
+                            var depth = 0;
+                            while( li.parents().first().attr('id') != 'tree' ) {
+                                li = li.parents('li').first();
+                                depth ++;
+                            }
+                            return depth;
+                        }
+                        function adjustSectioning(jq) {
+                            jq.each(function(ix, li) {
+                                li = $(li);
+                                log('adjust ' + li.children('span').first().text());
+                                li.removeClass(sectionClasses)
+                                if( li.hasClass('headline') )
+                                    li.addClass(sectionsByDepth[getHeadlineDepth(li)]);
+                            });
+                        };
+                        function generateOutput(ul) {
+                            var res = "";
+                            ul.children('li').each(function(ix, li) {
+                                li = $(li);
+                                var subject = li.children('span.subject');
+                                var body = li.children('div.body');
+                                if( li.hasClass('headline') ) {
+                                    var depth = getHeadlineDepth(li);
+                                    res += "\\" + sectionsByDepth[depth] + "{" + subject.text() + "}"
+                                } else
+                                    res += "# " + subject.text();
+                                res += "\n" + body.text() + "\n";
+                                res += generateOutput(li.children(ul));
+                            });
+                            return res;
+                        }
+                        function repeatString(str, n) {
+                            var res = ""
+                            for(var i=0; i<n; i++) res += str;
+                            return res;
+                        }
+                </script>
+        </head>
+        <body>
+                <ul id='tree'>
+                        <li class='headline'><span class='subject'>First section</span><div class='body'></div><ul>
+                                        <li class='headline'>
+                                            <span class='subject'>Prima section</span>
+                                            <div class='body'></div></li>
+                                        <li class='headline'>
+                                            <span class='subject'>Seconda section</span>
+                                            <div class='body'></div>
+                                            <ul>
+                                                    <li><span class='subject'>A section</span><div class='body'></div></li>
+                                                    <li><span class='subject'>B section</span><div class='body'></div></li>
+                                                    <li><span class='subject'>C section</span><div class='body'></div></li>
+                                        </ul></li>
+                                        <li class='headline'><span class='subject'>Tertia section</span><div class='body'></div></li>
+                        </ul></li>
+                        <li><span class='subject headline'>Second section</span> <div class='body'></div><ul>
+                                <li><span class='subject'>A section</span><div class='body'></div></li>
+                                <li><span class='subject'>B section</span><div class='body'></div></li>
+                                <li><span class='subject'>C section</span><div class='body'></div></li>
+                        </ul></li>
+                        <li><span class='subject headline'>Third sectioni</span><div class='body'></div></li>
+                </ul>
+                <div id="output" class="hidden"></div>
+                <div id="editDialog" title="Dialog Title"><h4></h4><textarea cols="82"></textarea></div>
+        </body>
+</html>
