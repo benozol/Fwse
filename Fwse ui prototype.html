@@ -81,7 +81,7 @@
                         </style>
                 <script language="javascript">
 
-                        var parameters;
+                        var parameters = [];
                         $(function() {
                             var x = $('li').first();
                             x.attr('id', 'selected');
@@ -301,20 +301,22 @@
                                         </ul></li>
                                         <li class='headline'><span class='subject'>Tertia section</span><div class='body'></div></li>
                         </ul></li>
-                        <li><span class='subject headline'>Second section</span> <div class='body'></div><ul>
+                        <li class='headline'><span class='subject headline'>Second section</span> <div class='body'></div><ul>
                                 <li><span class='subject'>A section</span><div class='body'></div></li>
                                 <li><span class='subject'>B section</span><div class='body'></div></li>
                                 <li><span class='subject'>C section</span><div class='body'></div></li>
                         </ul></li>
-                        <li><span class='subject headline'>Third sectioni</span><div class='body'></div></li>
+                        <li><span class='subject'>Outro</span><div class='body'></div></li>
                 </ul>
                 <div id="output" class="hidden">
                         TODO
                         <ul>
+                                <li>Jump to parent / parent's next if repeatedly impossible selection change</li>
                                 <li>Hide items</li>
-                                <li>Select multiple</li>
                                 <li>Move items</li>
                                 <li>Delete items</li>
+                                <li>Insert items (above, below, first child)</li>
+                                <li>pull item to parent's layer</li>
                         </ul>
                         <div></div>
                 </div>
