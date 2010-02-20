@@ -1,14 +1,23 @@
 
 var parameters = [];
+var trashcan;
+
 $(function() {
     var x = $('li').first();
     setSelection(x);
     adjustSectioning($('ul#tree li'));
+
+    var data = $('<div>');
+    // data.css( 'display', 'none' );
+    trashcan = $('<div>');
+    data.append( trashcan );
+    $(document.body).append( data );
+
     $('#editDialog').dialog({ 
             'modal': true,
             'autoOpen': false,
             'close': function() {
-                setCurrentShortcuts({});
+                setCurrentShortcuts(undefined, {});
             },
             'open': function() {
                 $(this).children('textarea').focus();
@@ -33,7 +42,7 @@ $(function() {
 
 function insertAt(x, defeatCallback) {
     log("insertAt");
-    setCurrentShortcuts({});
+    setCurrentShortcuts(undefined, {});
     var la = $('<li>');
     var input = $('<input>').attr('name', 'subject').attr('type', 'text');
     // TODO li.removeAttr('id');
@@ -91,7 +100,7 @@ const globalShortcuts = {
         }
     },
     'editSubject': function(li) {
-        setCurrentShortcuts({});
+        setCurrentShortcuts(undefined, {});
         var input = $('<input>').attr('name', 'subject').attr('type', 'text');
         var subject = li.children('span.subject').first().replaceWith(input);
         input.focus();
@@ -128,7 +137,7 @@ const globalShortcuts = {
         var dlg = $('#editDialog');
         var textarea = $('#editDialog textarea');
         textarea.val(body.text());
-        setCurrentShortcuts({});
+        setCurrentShortcuts(undefined, {});
         dlg.dialog('option', {
             'title': subject.text(),
             'buttons':  {
@@ -162,7 +171,7 @@ const globalShortcuts = {
         var pos = $('<hr>');
         li.append(ulConstruct);
         ulConstruct.append( pos );
-        setCurrentShortcuts({
+        setCurrentShortcuts("Parentizing ...", {
             'insertBelow': function() {
                 insertAt(pos, function() {
                     ulConstruct.remove();
@@ -173,8 +182,47 @@ const globalShortcuts = {
               ulConstruct.remove();
             }
         });
+    },
+    'paste': function(li, event) {
+        var elt = trashcan.children().first();
+        if( elt.length == 0 )
+            return;
+        elt.remove();
+        var insertions;
+        if( elt[0].nodeName == "LI" )
+            insertions = elt;
+        else if( elt[0].nodeName == "UL" )
+            insertions = elt.children();
+        else return;
+        if( event.shiftKey ) 
+            insertions.insertBefore( li );
+        else
+            insertions.insertAfter( li );
+    },
+    'delete': function(li) {
+        log("Delete ...");
+        setCurrentShortcuts("Deleting ...", {
+            'cancel': resetCurrentShortcuts,
+            'delete': function(lix, event) {
+                var choosing;
+                if( event.shiftKey ) {
+                    setSelection( li.parents('li').first() );
+                    choosing = li.parents('ul').first();
+                } else {
+                    if( li.next().length > 0 )
+                        setSelection( li.next());
+                    else if( li.prev().length > 0 )
+                        setSelection( li.prev() );
+                    choosing = li;
+                }
+                choosing.remove();
+                trashcan.append( choosing );
+                resetCurrentShortcuts();
+            }
+        });
     }
 };
+
 var keyboardLayout = {
     78: 'down',
     82: 'up',
@@ -185,27 +233,31 @@ var keyboardLayout = {
     72: 'toggleHeadline',
     65: 'editBody',
     88: 'toggleDebug',
-    80: 'writeToFile',
+    87: 'writeToFile',
+    80: 'paste',
     188: 'parentize',
-    27: 'cancel'
+    27: 'cancel',
+    68: 'delete'
     // TODO 68: 'delete' 
 
 };
 
-var currentShortcuts = globalShortcuts;
-function setCurrentShortcuts( shortcuts ) {
+function setCurrentShortcuts( message, shortcuts ) {
+    $('#shortcutsIndicator').text( message );
     currentShortcuts = shortcuts || {};
 }
 function resetCurrentShortcuts() {
+    $('#shortcutsIndicator').text("");
     currentShortcuts = globalShortcuts;
 }
+var currentShortcuts = globalShortcuts;
 $(window).keydown(function(event) {
     var command = keyboardLayout[event.keyCode];
     if( command ) {
         log( "Command " + command );
         var commandSemantics = currentShortcuts[command];
         if( commandSemantics ) {
-            commandSemantics(getSelection());
+            commandSemantics(getSelection(), event);
             return false;
         } else {
             log("(Currently) no semantics for " + command);
@@ -221,7 +273,7 @@ $(window).keydown(function(event) {
 // Selection
 
 function setSelection(li) {
-    $('#tree li').removeAttr('id');
+    $('#selected').removeAttr('id');
     li.attr('id', 'selected');
 }
 function getSelection() {
