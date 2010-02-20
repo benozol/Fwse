@@ -1,0 +1,70 @@
+#tree input {
+        color: black;
+        background-color: #ddddff;
+        border: none;
+        font-style: none;
+        font-size: none;
+        padding-left:3px;
+        padding-right:3px;
+        padding-top: 0px;
+        padding-bottom: 0px;
+        width: 100%;
+}
+body {
+        margin-left: 5cm;
+}
+#tree {
+        margin-left: 14px;
+}
+#tree ul {
+        margin-left: 34px;
+}
+#tree, #tree ul {
+        border-left: 1px solid #eeeeee;
+        padding-left: 6px;
+}
+span.subject {
+        padding-left:3px;
+        padding-right:3px;
+}
+#tree li {
+        background-color: white;
+        list-style-type: none;
+        font-style: normal;
+        font-size: small;
+        width: 100%;
+}
+#selected > span.subject {
+        // font-weight: bold;
+        background-color: #ffffaa;
+}
+ul {
+        background-color: white;
+        font-weight: normal;
+}
+div#output {
+        font-size: x-small;
+}
+div#output.hidden {
+        display: none;
+}
+.headline > span.subject, .headline > input {
+        font-style: italic;
+}
+.section > span.subject, .section > input {
+        font-size: x-large;
+}
+.subsection > span.subject, .subsection > input {
+        font-size: large;
+}
+.subsubsection > span.subject, .subsubsection > input {
+        font-size: medium;
+}
+div.body {
+        display: none;
+}
+#editDialog textarea {
+        width: 100%;
+        height: 100%;
+}
+
