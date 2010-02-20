@@ -47,6 +47,7 @@ ul {
 }
 div#output {
         font-size: x-small;
+        height: 100px;
 }
 div#output.hidden {
         display: none;

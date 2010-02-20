@@ -8,7 +8,7 @@ $(function() {
     adjustSectioning($('ul#tree li'));
 
     var data = $('<div>');
-    // data.css( 'display', 'none' );
+    data.css( 'display', 'none' );
     trashcan = $('<div>');
     data.append( trashcan );
     $(document.body).append( data );
@@ -71,19 +71,33 @@ function insertAt(x, defeatCallback) {
 }
 
 const globalShortcuts = {
-    'down': function(li) {
-        var la = li.next();
-        if( la.length == 1 ) {
-            li.removeAttr('id');
+    'down': function(li, event) {
+        var la;
+        var sublis = li.children('ul').children();
+
+        if( !event.shiftKey && sublis.length > 0 )
+            la = sublis.first();
+        else if( li.next().length > 0 )
+            la = li.next();
+        else if( !event.shiftKey )
+            la = li.parents('li').first().next();
+
+        if( la != undefined && la.length > 0 )
             setSelection( la );
-        }
     },
-    'up': function(li) {
+    'up': function(li, event) {
         var la = li.prev();
-        if( la.length == 1 ) {
-            li.removeAttr('id');
+        var sublis = li.prev().children('ul').children();
+
+        if( !event.shiftKey && sublis.length > 0 )
+            la = sublis.last();
+        else if( li.prev().length > 0 )
+            la = li.prev();
+        else if( !event.shiftKey )
+            la = li.parents('li').first();
+
+        if( la != undefined && la.length > 0 )
             setSelection( la );
-        }
     },
     'right': function(li) {
         var la = li.children().children().first();
@@ -121,10 +135,13 @@ const globalShortcuts = {
             }
         });
     },
-    'insertBelow': function(li) {
+    'insert': function(li, event) {
         var x = $('<span>');
         setSelection(x);
-        x.insertAfter(li);
+        if( event.shiftKey )
+            x.insertBefore( li );
+        else
+            x.insertAfter(li);
         insertAt(x, holdout(setSelection, li));
     },
     'toggleHeadline': function(li) {
@@ -172,14 +189,16 @@ const globalShortcuts = {
         li.append(ulConstruct);
         ulConstruct.append( pos );
         setCurrentShortcuts("Parentizing ...", {
-            'insertBelow': function() {
+            'insert': function() {
                 insertAt(pos, function() {
                     ulConstruct.remove();
                     setSelection(li);
                 } );
+                resetCurrentShortcuts();
             },
             'cancel': function(li) {
               ulConstruct.remove();
+              resetCurrentShortcuts();
             }
         });
     },
@@ -229,7 +248,7 @@ var keyboardLayout = {
     84: 'right',
     83: 'left',
     69: 'editSubject',
-    79: 'insertBelow',
+    79: 'insert',
     72: 'toggleHeadline',
     65: 'editBody',
     88: 'toggleDebug',
