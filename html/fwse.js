@@ -7,23 +7,23 @@ $(function() {
     setSelection(x);
     adjustSectioning($('ul#tree li'));
 
-    var data = $('<div>');
-    data.css( 'display', 'none' );
-    trashcan = $('<div>');
-    data.append( trashcan );
-    $(document.body).append( data );
+    trashcan = $('div#trashcan');
+    $('#output').addClass('hidden');
 
     $('#editDialog').dialog({ 
             'modal': true,
             'autoOpen': false,
             'close': function() {
-                setCurrentShortcuts(undefined, {});
+                unsetCurrentShortcuts();
             },
             'open': function() {
                 $(this).children('textarea').focus();
             },
             'height': '50%',
             'width': '50%'
+    });
+    $('#tree li').click(function() {
+        setSelection($(this));
     });
     parameters = [];
     var hashes = window.location.href.slice(window.location.href.indexOf('?') + 1).split('&');
@@ -33,25 +33,44 @@ $(function() {
         parameters.push(hash[0]);
         parameters[hash[0]] = hash[1];
     }
-    if( !parameters['filename'] )
-        alert("Reload page with a filename as get parameter (...html?filename=/hom...)");
+    unsetCurrentShortcuts();
+    if( parameters['filename'] ) {
+        $('#filename').append(parameters['filename']);
+        resetCurrentShortcuts();
+    } else {
+        var dialog = $('#fileDialog');
+        dialog.dialog({
+            'open': function() {
+                $(this).children('input').focus();
+            },
+            'buttons': {
+                'Ok': function() {
+                    parameters['filename'] = $(this).children('input').val();
+                    $('#filename').append(parameters['filename']);
+                    resetCurrentShortcuts();
+                    $(this).dialog('destroy');
+                }
+            }
+        });
+    }
 });
 
 ////////////////////////////////////////////////////////////////////////////////
 // Shortcuts
 
-function insertAt(x, defeatCallback) {
-    log("insertAt");
-    setCurrentShortcuts(undefined, {});
+function createAt( x, defeatCallback ) {
     var la = $('<li>');
     var input = $('<input>').attr('name', 'subject').attr('type', 'text');
-    // TODO li.removeAttr('id');
+    la.append(input);
+    la.append($('<span>').addClass('infos'));
+    unsetCurrentShortcuts();
     input.keydown(function(event) {
         switch( event.keyCode ) {
             case 27:
                 la.remove();
                 resetCurrentShortcuts();
                 defeatCallback();
+                resetCurrentShortcuts();
                 return;
             case 13:
                 var subject = $('<span>').attr('class', 'subject');
@@ -64,39 +83,66 @@ function insertAt(x, defeatCallback) {
                 return;
         }
     });
-    log("about to insert");
-    la.append(input);
     x.replaceWith(la);
     input.focus();
 }
 
-const globalShortcuts = {
-    'down': function(li, event) {
-        var la;
-        var sublis = li.children('ul').children();
+function pasteAt( pos ) {
+    var elt = trashcan.children().first();
+    if( elt.length == 0 ) {
+        log("Nothing to paste");
+        pos.remove();
+        return;
+    }
+    elt.remove();
 
-        if( !event.shiftKey && sublis.length > 0 )
+    var insertions;
+    if( elt[0].nodeName == "LI" )
+        insertions = elt;
+    else if( elt[0].nodeName == "UL" )
+        insertions = elt.children();
+
+    pos.replaceWith( insertions );
+    return insertions;
+}
+
+const globalShortcuts = {
+    'down': function(li) {
+        var la;
+        var sublis = li.children('ul:visible').children();
+
+        if( sublis.length > 0 )
             la = sublis.first();
         else if( li.next().length > 0 )
             la = li.next();
-        else if( !event.shiftKey )
+        else
             la = li.parents('li').first().next();
 
         if( la != undefined && la.length > 0 )
             setSelection( la );
     },
-    'up': function(li, event) {
+    'S-down': function(li) {
+        var la = li.next();
+        if( la.length == 1 )
+            setSelection( la );
+    },
+    'up': function(li) {
         var la = li.prev();
-        var sublis = li.prev().children('ul').children();
+        var sublis = li.prev().children('ul:visible').children();
 
-        if( !event.shiftKey && sublis.length > 0 )
+        if( sublis.length > 0 )
             la = sublis.last();
         else if( li.prev().length > 0 )
             la = li.prev();
-        else if( !event.shiftKey )
+        else
             la = li.parents('li').first();
 
-        if( la != undefined && la.length > 0 )
+        if( la.length > 0 )
+            setSelection( la );
+    },
+    'S-up': function( li ) {
+        var la = li.prev();
+        if( la.length == 1 )
             setSelection( la );
     },
     'right': function(li) {
@@ -114,7 +160,7 @@ const globalShortcuts = {
         }
     },
     'editSubject': function(li) {
-        setCurrentShortcuts(undefined, {});
+        unsetCurrentShortcuts();
         var input = $('<input>').attr('name', 'subject').attr('type', 'text');
         var subject = li.children('span.subject').first().replaceWith(input);
         input.focus();
@@ -136,13 +182,10 @@ const globalShortcuts = {
         });
     },
     'insert': function(li, event) {
-        var x = $('<span>');
-        setSelection(x);
-        if( event.shiftKey )
-            x.insertBefore( li );
-        else
-            x.insertAfter(li);
-        insertAt(x, holdout(setSelection, li));
+        createAt(createDummy().insertAfter(li), holdout(setSelection, li));
+    },
+    'S-insert': function(li) {
+        createAt(createDummy().insertBefore(li), holdout(setSelection, li));
     },
     'toggleHeadline': function(li) {
         li.toggleClass('headline'); 
@@ -154,7 +197,7 @@ const globalShortcuts = {
         var dlg = $('#editDialog');
         var textarea = $('#editDialog textarea');
         textarea.val(body.text());
-        setCurrentShortcuts(undefined, {});
+        unsetCurrentShortcuts();
         dlg.dialog('option', {
             'title': subject.text(),
             'buttons':  {
@@ -171,7 +214,7 @@ const globalShortcuts = {
         dlg.dialog('open');
     },
     'writeToFile': function() {
-        var str = "";
+        var str = "#" + $('#tree').html();
         str += "\\documentclass{srcartcl}\n";
         str += "\\begin{document}\n";
         str += generateOutput($('ul#tree'));
@@ -182,62 +225,81 @@ const globalShortcuts = {
         $('div#output').toggleClass('hidden');
     },
     'parentize': function(li) {
-        if( li.children('ul').length > 0 )
+        if( li.children('ul').children().length > 0 )
             return trace(undefined, "selected items has children");
         var ulConstruct = $('<ul>');
         var pos = $('<hr>');
         li.append(ulConstruct);
         ulConstruct.append( pos );
-        setCurrentShortcuts("Parentizing ...", {
+        setSelection($());
+        setCurrentShortcuts("Parentizing", {
             'insert': function() {
-                insertAt(pos, function() {
+                createAt(pos, function() {
                     ulConstruct.remove();
                     setSelection(li);
                 } );
+            },
+            'paste': function() {
+                var insertions = pasteAt(pos);
+                if( insertions ) {
+                    setSelection( insertions.last() );
+                    adjustSectioning( insertions );
+                }
                 resetCurrentShortcuts();
             },
-            'cancel': function(li) {
+            'cancel': function() {
               ulConstruct.remove();
               resetCurrentShortcuts();
+              setSelection( li );
             }
         });
     },
     'paste': function(li, event) {
-        var elt = trashcan.children().first();
-        if( elt.length == 0 )
-            return;
-        elt.remove();
-        var insertions;
-        if( elt[0].nodeName == "LI" )
-            insertions = elt;
-        else if( elt[0].nodeName == "UL" )
-            insertions = elt.children();
-        else return;
-        if( event.shiftKey ) 
-            insertions.insertBefore( li );
+        var x = createDummy().insertAfter(li);
+        var insertions = pasteAt(x);
+        if( insertions ) {
+            setSelection(insertions.last());
+            adjustSectioning( insertions );
+        }
+    },
+    'S-paste': function( li ) {
+        var x = createDummy().insertBefore(li);
+        var insertions = pasteAt(x);
+        if( insertions ) {
+            setSelection(insertions.first());
+            adjustSectioning( insertions );
+        }
+    },
+    'toggleSubitems': function( li ) {
+        li.children('ul').toggleClass('hidden');
+        if( li.children('ul').hasClass('hidden') )
+            li.children('span.infos').text( "... " + li.children('ul').children('li').length );
         else
-            insertions.insertAfter( li );
+            li.children('span.infos').text("");
     },
     'delete': function(li) {
         log("Delete ...");
-        setCurrentShortcuts("Deleting ...", {
+        function delete_( choosing, nextSelection ) {
+            choosing.remove();
+            trashcan.append( choosing );
+            setSelection( nextSelection );
+            resetCurrentShortcuts();
+        }
+        setCurrentShortcuts("Deleting", {
             'cancel': resetCurrentShortcuts,
-            'delete': function(lix, event) {
-                var choosing;
-                if( event.shiftKey ) {
-                    setSelection( li.parents('li').first() );
-                    choosing = li.parents('ul').first();
-                } else {
+            'S-delete': function() {
+                delete_( li.parents('ul').first(), li.parents('li').first() );
+            },
+            'delete': function() {
+                var nextSelection;
                     if( li.next().length > 0 )
-                        setSelection( li.next());
+                        nextSelection = li.next();
                     else if( li.prev().length > 0 )
-                        setSelection( li.prev() );
-                    choosing = li;
-                }
-                choosing.remove();
-                trashcan.append( choosing );
-                resetCurrentShortcuts();
-            }
+                        nextSelection = li.prev();
+                    else
+                        nextSelection = li.parents('li').first();
+                delete_( li, nextSelection );
+            },
         });
     }
 };
@@ -256,23 +318,30 @@ var keyboardLayout = {
     80: 'paste',
     188: 'parentize',
     27: 'cancel',
-    68: 'delete'
-    // TODO 68: 'delete' 
+    68: 'delete',
+    77: 'toggleSubitems'
 
 };
 
 function setCurrentShortcuts( message, shortcuts ) {
+    if( message ) message += ":";
+    for( var key in shortcuts )
+        message += " " + key;
     $('#shortcutsIndicator').text( message );
     currentShortcuts = shortcuts || {};
 }
 function resetCurrentShortcuts() {
-    $('#shortcutsIndicator').text("");
-    currentShortcuts = globalShortcuts;
+    setCurrentShortcuts( "", globalShortcuts );
 }
-var currentShortcuts = globalShortcuts;
+function unsetCurrentShortcuts() {
+    $('#shortcutsIndicator').text("");
+    currentShortcuts = {};
+}
+var currentShortcuts;
 $(window).keydown(function(event) {
     var command = keyboardLayout[event.keyCode];
     if( command ) {
+        command = (event.shiftKey ? "S-" : "") + command;
         log( "Command " + command );
         var commandSemantics = currentShortcuts[command];
         if( commandSemantics ) {
@@ -298,6 +367,8 @@ function setSelection(li) {
 function getSelection() {
     return $('#tree li#selected');
 }
+////////////////////////////////////////////////////////////////////////////////
+// Stuff
 
 var sectionsByDepth = [ 'section', 'subsection', 'subsubsection' ];
 var sectionClasses = 'section subsection subsubsection';
@@ -372,6 +443,10 @@ function writeToFile(data) {
 
 ////////////////////////////////////////////////////////////////////////////////
 // Utils
+
+function createDummy() {
+    return $('<div>').css('display', 'none');
+}
 
 function repeatString(str, n) {
     var res = ""

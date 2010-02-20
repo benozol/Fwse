@@ -1,0 +1,53 @@
+<html>
+   <head>
+       <title>Fwse Prototype</title>
+       <link type="text/css" href="css/ui-lightness/jquery-ui-1.7.2.custom.css" rel="stylesheet" />
+       <link type="text/css" href="fwse.css" rel="stylesheet" />
+       <script type="text/javascript" src="js/jquery-1.4.1.js"></script>
+       <script type="text/javascript" src="js/jquery-ui-1.7.2.custom.min.js"></script>
+       <script type="text/javascript" src="js/json2.js"></script>
+       <script type="text/javascript" src="fwse.js"></script>
+   </head>
+   <body>
+       <span id='filename'>Editing: </span>
+       <hr />
+       <ul id='tree'>
+               <li class='headline'><span class='subject'>First section</span><span class=infos></span><div class='body'></div>
+           <ul>
+               <li class='headline'>
+               <span class='subject'>Prima section</span><span class=infos></span>
+               <div class='body'></div><ul></ul></li>
+               <li class='headline'>
+               <span class='subject'>Seconda section</span><span class=infos></span>
+               <div class='body'></div>
+               <ul>
+                       <li><span class='subject'>A section</span><div class='body'><span class=infos></span></div></li>
+                       <li><span class='subject'>B section</span><div class='body'><span class=infos></span></div></li>
+                       <li><span class='subject'>C section</span><div class='body'><span class=infos></span></div></li>
+               </ul></li>
+               <li class='headline'><span class='subject'>Tertia section</span><span class=infos></span><div class='body'></div></li>
+           </ul></li>
+           <li class='headline'><span class='subject headline'>Second section</span><span class=infos></span> <div class='body'></div><ul>
+                   <li><span class='subject'>A section</span><span class=infos></span><div class='body'></div></li>
+                   <li><span class='subject'>B section</span><span class=infos></span><div class='body'></div></li>
+                   <li><span class='subject'>C section</span><span class=infos></span><div class='body'></div></li>
+           </ul></li>
+           <li><span class='subject'>Outro</span><span class=infos></span><div class='body'></div></li>
+       </ul>
+       <hr />
+       <div id="shortcutsIndicator"></div>
+       <div id="output">
+           TODO
+           <ul>
+               <li>Hide items</li>
+               <li>warn for headline'd items with body and offer detachment</li>
+           </ul>
+           <div></div>
+       </div>
+       <div id='data'>
+           <div id="trashcan"></div>
+           <div id="editDialog" title="Dialog Title"><textarea cols="82"></textarea></div>
+           <div id="fileDialog" title="File Dialog"><input type='text'></input></div>
+       </div>
+   </body>
+</html>
