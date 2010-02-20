@@ -34,6 +34,9 @@ span.subject {
         font-size: small;
         width: 100%;
 }
+#tree hr {
+        color: #eeeeee;
+}
 #selected > span.subject {
         // font-weight: bold;
         background-color: #ffffaa;

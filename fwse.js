@@ -2,13 +2,13 @@
 var parameters = [];
 $(function() {
     var x = $('li').first();
-    x.attr('id', 'selected');
+    setSelection(x);
     adjustSectioning($('ul#tree li'));
     $('#editDialog').dialog({ 
             'modal': true,
             'autoOpen': false,
             'close': function() {
-                setCurrentShortcuts();
+                setCurrentShortcuts({});
             },
             'open': function() {
                 $(this).children('textarea').focus();
@@ -31,33 +31,63 @@ $(function() {
 ////////////////////////////////////////////////////////////////////////////////
 // Shortcuts
 
+function insertAt(x, defeatCallback) {
+    log("insertAt");
+    setCurrentShortcuts({});
+    var la = $('<li>');
+    var input = $('<input>').attr('name', 'subject').attr('type', 'text');
+    // TODO li.removeAttr('id');
+    input.keydown(function(event) {
+        switch( event.keyCode ) {
+            case 27:
+                la.remove();
+                resetCurrentShortcuts();
+                defeatCallback();
+                return;
+            case 13:
+                var subject = $('<span>').attr('class', 'subject');
+                subject.text(input.val());
+                input.replaceWith(subject);
+                setSelection(la);
+                resetCurrentShortcuts();
+                return la;
+            default:
+                return;
+        }
+    });
+    log("about to insert");
+    la.append(input);
+    x.replaceWith(la);
+    input.focus();
+}
+
 const globalShortcuts = {
     'down': function(li) {
         var la = li.next();
         if( la.length == 1 ) {
             li.removeAttr('id');
-            la.attr('id', 'selected')
+            setSelection( la );
         }
     },
     'up': function(li) {
         var la = li.prev();
         if( la.length == 1 ) {
             li.removeAttr('id');
-            la.attr('id', 'selected')
+            setSelection( la );
         }
     },
     'right': function(li) {
         var la = li.children().children().first();
         if( la.length > 0 ) {
             li.removeAttr('id');
-            la.first().attr('id', 'selected');
+            setSelection( la.first() );
         }
     },
     'left': function(li) {
         la = li.parents().first();
         if( la.attr('id') != 'tree' ) {
             li.removeAttr('id');
-            la.parents().first().attr('id', 'selected');
+            setSelection( la.parents().first() );
         }
     },
     'editSubject': function(li) {
@@ -83,32 +113,10 @@ const globalShortcuts = {
         });
     },
     'insertBelow': function(li) {
-        setCurrentShortcuts({});
-        var la = $('<li>');
-        var input = $('<input>').attr('name', 'subject').attr('type', 'text');
-        li.removeAttr('id');
-        input.keydown(function(event) {
-            switch( event.keyCode ) {
-                case 27:
-                    la.remove();
-                    li.attr('id', 'selected');
-                    resetCurrentShortcuts();
-                    return false;
-                case 13:
-                    var subject = $('<span>').attr('class', 'subject');
-                    subject.text(input.val());
-                    input.replaceWith(subject);
-                    la.attr('id', 'selected');
-                    resetCurrentShortcuts();
-                    return false;
-                default:
-                    return true;
-            }
-        });
-        la.append(input);
-        log("about to insert");
-        li.after(la);
-        input.focus();
+        var x = $('<span>');
+        setSelection(x);
+        x.insertAfter(li);
+        insertAt(x, holdout(setSelection, li));
     },
     'toggleHeadline': function(li) {
         li.toggleClass('headline'); 
@@ -127,9 +135,11 @@ const globalShortcuts = {
                 "Ok": function() {
                     body.text(textarea.val());
                     dlg.dialog('close');
+                    resetCurrentShortcuts();
                 },
                 "Cancel": function() {
                     dlg.dialog('close');
+                    resetCurrentShortcuts();
                 }
         }});
         dlg.dialog('open');
@@ -144,6 +154,25 @@ const globalShortcuts = {
     },
     'toggleDebug': function() {
         $('div#output').toggleClass('hidden');
+    },
+    'parentize': function(li) {
+        if( li.children('ul').length > 0 )
+            return trace(undefined, "selected items has children");
+        var ulConstruct = $('<ul>');
+        var pos = $('<hr>');
+        li.append(ulConstruct);
+        ulConstruct.append( pos );
+        setCurrentShortcuts({
+            'insertBelow': function() {
+                insertAt(pos, function() {
+                    ulConstruct.remove();
+                    setSelection(li);
+                } );
+            },
+            'cancel': function(li) {
+              ulConstruct.remove();
+            }
+        });
     }
 };
 var keyboardLayout = {
@@ -156,13 +185,16 @@ var keyboardLayout = {
     72: 'toggleHeadline',
     65: 'editBody',
     88: 'toggleDebug',
-    80: 'writeToFile'
+    80: 'writeToFile',
+    188: 'parentize',
+    27: 'cancel'
+    // TODO 68: 'delete' 
 
 };
 
 var currentShortcuts = globalShortcuts;
 function setCurrentShortcuts( shortcuts ) {
-    currentShortcuts = shortcuts;
+    currentShortcuts = shortcuts || {};
 }
 function resetCurrentShortcuts() {
     currentShortcuts = globalShortcuts;
@@ -173,7 +205,7 @@ $(window).keydown(function(event) {
         log( "Command " + command );
         var commandSemantics = currentShortcuts[command];
         if( commandSemantics ) {
-            commandSemantics($('li#selected'));
+            commandSemantics(getSelection());
             return false;
         } else {
             log("(Currently) no semantics for " + command);
@@ -279,4 +311,12 @@ function repeatString(str, n) {
 function log(msg) {
     $('div#output div').prepend($('<br>'));
     $('div#output div').prepend(msg);
+}
+
+function holdout(f, x) {
+    return function() { return f(x); }
+}
+function trace( value, msg ) {
+    log( msg );
+    return value;
 }
