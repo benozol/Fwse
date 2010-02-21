@@ -35,7 +35,6 @@ $(function() {
         resetCurrentShortcuts();
     } else {
         resetCurrentShortcuts();
-        filenameLabel.hide();
         unsetCurrentShortcuts();
     }
 
@@ -335,21 +334,21 @@ const globalShortcuts = {
 };
 
 var keyboardLayout = {
-    78: 'down',
-    82: 'up',
-    84: 'right',
-    83: 'left',
-    69: 'editSubject',
-    79: 'insert',
-    72: 'toggleHeadline',
-    65: 'editBody',
-    88: 'toggleDebug',
-    87: 'writeToFile',
-    80: 'paste',
-    188: 'parentize',
-    27: 'cancel',
-    68: 'delete',
-    77: 'toggleSubitems'
+    78:  'down',           // n
+    82:  'up',             // r
+    84:  'right',          // t
+    83:  'left',           // s
+    69:  'editSubject',    // e
+    79:  'insert',         // o
+    72:  'toggleHeadline', // h
+    65:  'editBody',       // a
+    88:  'toggleDebug',    // x
+    87:  'writeToFile',    // w
+    80:  'paste',          // p
+    188: 'parentize',      // ,     only appliable at items without any subitems
+    27:  'cancel',         // ESC
+    68:  'delete',         // d
+    77:  'toggleSubitems'  // m     toggle visibility of subitems
 
 };
 
