@@ -1,5 +1,6 @@
 body {
         margin-left: 2cm;
+        margin-right: 2cm;
 }
 
 /* Navigation tree */
@@ -40,16 +41,20 @@ body {
         width: 100%;
 }
 
-.headline > span.subject, .headline > input {
+.headline > span.subject,
+.headline > input {
         font-style: italic;
 }
-.section > span.subject, .section > input {
+.section > span.subject,
+.section > input {
         font-size: x-large;
 }
-.subsection > span.subject, .subsection > input {
+.subsection > span.subject,
+.subsection > input {
         font-size: large;
 }
-.subsubsection > span.subject, .subsubsection > input {
+.subsubsection > span.subject,
+.subsubsection > input {
         font-size: medium;
 }
 
@@ -59,7 +64,6 @@ body {
 }
 
 #selected > span.subject {
-        // font-weight: bold;
         background-color: #ffffaa;
 }
 

@@ -1,13 +1,11 @@
 
-var parameters = [];
-var trashcan;
+var filename;
 
 $(function() {
     var x = $('li').first();
     setSelection(x);
     adjustSectioning($('ul#tree li'));
 
-    trashcan = $('div#trashcan');
     $('#output').addClass('hidden');
 
     $('#editDialog').dialog({ 
@@ -22,38 +20,60 @@ $(function() {
             'height': '50%',
             'width': '50%'
     });
-    $('#tree li').click(function() {
-        setSelection($(this));
-    });
-    parameters = [];
-    var hashes = window.location.href.slice(window.location.href.indexOf('?') + 1).split('&');
-    for(var i = 0; i < hashes.length; i++)
-    {
-        var hash = hashes[i].split('=');
-        parameters.push(hash[0]);
-        parameters[hash[0]] = hash[1];
-    }
-    unsetCurrentShortcuts();
-    if( parameters['filename'] ) {
-        $('#filename').append(parameters['filename']);
+
+    var filenameInput = $('#filename input');
+    var filenameLabel = $('#filename span');
+    filename = document.location.hash.substring(1);
+    if( filename ) {
+        filenameLabel.text( filename );
+        filenameInput.hide();
+        var str = readFromFile(filename);
+        if( str ) {
+            $('#tree').html(str);
+            setSelection( $('#tree li').first() );
+        }
         resetCurrentShortcuts();
     } else {
-        var dialog = $('#fileDialog');
-        dialog.dialog({
-            'open': function() {
-                $(this).children('input').focus();
-            },
-            'buttons': {
-                'Ok': function() {
-                    parameters['filename'] = $(this).children('input').val();
-                    $('#filename').append(parameters['filename']);
-                    resetCurrentShortcuts();
-                    $(this).dialog('destroy');
-                }
-            }
-        });
+        resetCurrentShortcuts();
+        filenameLabel.hide();
+        unsetCurrentShortcuts();
     }
+
+    // filenameLabel.click( function( event ) {
+    //     unsetCurrentShortcuts();
+    //     filenameLabel.hide();
+    //     filenameInput.show();
+    // });
+    filenameInput.keydown( function( event ) {
+       switch( event.keyCode ) {
+           case 13:
+               filename = filenameInput.val();
+               log('try read file ' + filename);
+               var str = readFromFile(filename);
+               if( str )
+                   $('#tree').html(str);
+               filenameInput.hide();
+               filenameLabel.text( filename );
+               filenameLabel.show();
+               resetCurrentShortcuts();
+               return false;
+           case 27:
+               if( filename ) {
+                   filenameInput.hide();
+                   filenameLabel.text( filename );
+                   filenameLabel.show();
+                   resetCurrentShortcuts();
+               }
+               return false;
+           default:
+               return true;
+       }
+    });
 });
+
+function getFile() {
+    return $('#fileinput')[0].files[0];
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Shortcuts
@@ -63,6 +83,8 @@ function createAt( x, defeatCallback ) {
     var input = $('<input>').attr('name', 'subject').attr('type', 'text');
     la.append(input);
     la.append($('<span>').addClass('infos'));
+    la.append($('<div>').addClass('body'));
+    la.append($('<ul>').addClass('subitems'));
     unsetCurrentShortcuts();
     input.keydown(function(event) {
         switch( event.keyCode ) {
@@ -88,7 +110,7 @@ function createAt( x, defeatCallback ) {
 }
 
 function pasteAt( pos ) {
-    var elt = trashcan.children().first();
+    var elt = $('#trashcan').children().first();
     if( elt.length == 0 ) {
         log("Nothing to paste");
         pos.remove();
@@ -106,42 +128,50 @@ function pasteAt( pos ) {
     return insertions;
 }
 
+function firstLast(li) {
+}
+
 const globalShortcuts = {
+    'up': function(li) {
+        var la;
+
+        if( li.prev().length > 0 ) {
+            la = li.prev();
+            while( la.children('ul.subitems').children('li').length > 0 )
+                la = la.children('ul.subitems').children('li').last()
+        } else if( li.parent().not('ul#tree').length > 0 )
+            la = li.parent().parent();
+
+        if( la )
+            setSelection( la );
+    },
     'down': function(li) {
         var la;
-        var sublis = li.children('ul:visible').children();
 
-        if( sublis.length > 0 )
-            la = sublis.first();
-        else if( li.next().length > 0 )
-            la = li.next();
-        else
-            la = li.parents('li').first().next();
-
-        if( la != undefined && la.length > 0 )
+        var tmp = li.children('ul.subitems:visible').children('li');
+        if( tmp.length > 0 )
+            la = tmp.first();
+        else {
+            if( li.next().length > 0 )
+                la = li.next();
+            else {
+                tmp = li;
+                while( tmp.parent().not('ul#tree').length > 0 && tmp.next().length == 0 )
+                    tmp = tmp.parent().parent();
+                if( tmp.next().length > 0 )
+                    la = tmp.next();
+            }
+        }
+        if( la )
+            setSelection( la.first() );
+    },
+    'S-up': function( li ) {
+        var la = li.prev();
+        if( la.length == 1 )
             setSelection( la );
     },
     'S-down': function(li) {
         var la = li.next();
-        if( la.length == 1 )
-            setSelection( la );
-    },
-    'up': function(li) {
-        var la = li.prev();
-        var sublis = li.prev().children('ul:visible').children();
-
-        if( sublis.length > 0 )
-            la = sublis.last();
-        else if( li.prev().length > 0 )
-            la = li.prev();
-        else
-            la = li.parents('li').first();
-
-        if( la.length > 0 )
-            setSelection( la );
-    },
-    'S-up': function( li ) {
-        var la = li.prev();
         if( la.length == 1 )
             setSelection( la );
     },
@@ -214,20 +244,20 @@ const globalShortcuts = {
         dlg.dialog('open');
     },
     'writeToFile': function() {
-        var str = "#" + $('#tree').html();
-        str += "\\documentclass{srcartcl}\n";
+        var str = "";
+        str += "\\documentclass{scrartcl}\n";
         str += "\\begin{document}\n";
         str += generateOutput($('ul#tree'));
         str += "\\end{document}\n";
-        writeToFile(str);
+        writeToFile(filename, str);
     },
     'toggleDebug': function() {
         $('div#output').toggleClass('hidden');
     },
     'parentize': function(li) {
-        if( li.children('ul').children().length > 0 )
+        var ulConstruct = li.children('ul.subitems');
+        if( ulConstruct.children().length > 0 )
             return trace(undefined, "selected items has children");
-        var ulConstruct = $('<ul>');
         var pos = $('<hr>');
         li.append(ulConstruct);
         ulConstruct.append( pos );
@@ -271,9 +301,9 @@ const globalShortcuts = {
         }
     },
     'toggleSubitems': function( li ) {
-        li.children('ul').toggleClass('hidden');
-        if( li.children('ul').hasClass('hidden') )
-            li.children('span.infos').text( "... " + li.children('ul').children('li').length );
+        li.children('ul.subitems').toggleClass('hidden');
+        if( li.children('ul.subitems').hasClass('hidden') )
+            li.children('span.infos').text( "... " + li.children('ul.subitems').children('li').length );
         else
             li.children('span.infos').text("");
     },
@@ -281,14 +311,14 @@ const globalShortcuts = {
         log("Delete ...");
         function delete_( choosing, nextSelection ) {
             choosing.remove();
-            trashcan.append( choosing );
+            $('#trashcan').append( choosing );
             setSelection( nextSelection );
             resetCurrentShortcuts();
         }
         setCurrentShortcuts("Deleting", {
             'cancel': resetCurrentShortcuts,
             'S-delete': function() {
-                delete_( li.parents('ul').first(), li.parents('li').first() );
+                delete_( li.parents('ul.subitems').first(), li.parents('li').first() );
             },
             'delete': function() {
                 var nextSelection;
@@ -391,25 +421,70 @@ function adjustSectioning(jq) {
     });
 };
 
+function escapeLatex(str) {
+    return str;
+    /*
+        .replace(/%/g, '\\%')
+        .replace(/\\/g, '\\\\')
+        .replace(/{/g, '\\{')
+        .replace(/}/g, '\\}')
+        .replace(/#/g, '\\#')
+        .replace(/#/g, '\\#')
+        .replace(/&/g, '\\&')
+        .replace(/^/g, '\\^')
+        .replace(/</g, '\\en\\lt')
+        .replace(/>/g, '\\gt')
+        ;
+        */
+}
+
 function generateOutput(ul) {
     var res = "";
     ul.children('li').each(function(ix, li) {
         li = $(li);
-        var subject = li.children('span.subject');
-        var body = li.children('div.body');
+        res += "\n\n"
+        var subject = escapeLatex(li.children('span.subject').text());
+        var body = escapeLatex(li.children('div.body').text());
+        res += "% " + subject + "\n";
         if( li.hasClass('headline') ) {
             var depth = getHeadlineDepth(li);
-            res += "\\" + sectionsByDepth[depth] + "{" + subject.text() + "}"
+            res += "\\" + sectionsByDepth[depth] + "{" + subject + "}";
         } else
-            res += "# " + subject.text();
-        res += "\n" + body.text() + "\n";
+            res += "\\hspace{0pt}\\marginpar{\\tiny{" + subject + "}}";
+        res += "\n" + body + "\n";
         res += generateOutput(li.children(ul));
     });
     return res;
 }
 
-function writeToFile(data) {
-    var filename = parameters['filename'];
+function readFromFile( filename ) {
+    log("Read from " + filename);
+    try {
+        netscape.security.PrivilegeManager.enablePrivilege("UniversalXPConnect");
+    } catch (e) {
+        alert("Permission to save file was denied.");
+        return;
+    }
+
+    var file = Components.classes["@mozilla.org/file/local;1"]
+        .createInstance(Components.interfaces.nsILocalFile);
+    file.initWithPath(filename);
+    if( !file.exists() )
+        return;
+
+    var iStream = Components.classes["@mozilla.org/network/file-input-stream;1"]
+		.createInstance( Components.interfaces.nsIFileInputStream );
+	iStream.init( file, 0x01, 0444, 0);
+    iStream.QueryInterface( Components.interfaces.nsILineInputStream );
+
+    var line = {}
+    iStream.readLine( line );
+    iStream.close();
+
+    return line.value.substring(1);
+}
+
+function writeToFile(filename, data) {
     log("Write to " + filename);
     try {
         netscape.security.PrivilegeManager.enablePrivilege("UniversalXPConnect");
@@ -436,6 +511,8 @@ function writeToFile(data) {
     var converter = Components.classes["@mozilla.org/intl/converter-output-stream;1"]
         .createInstance(Components.interfaces.nsIConverterOutputStream);
     converter.init(foStream, "UTF-8", 0, 0);
+    var str = "%" + $('#tree').html().replace(/\n/g, '') + '\n';
+    converter.writeString(str);
     converter.writeString(data);
     converter.close(); // this closes foStream
     log("Done");
